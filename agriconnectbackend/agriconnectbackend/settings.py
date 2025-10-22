@@ -83,7 +83,19 @@ DATABASES = {
         'PASSWORD': '12345',
         'HOST': 'localhost',
         'PORT': '3306',
-    }
+    },
+    'timeseries': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'tsdb',
+        'USER': 'tsdbadmin',
+        'PASSWORD': 'a27o7n30vgjj6zmz',
+        'HOST': 'q5yrlsbvae.tjbvzaurr6.tsdb.cloud.timescale.com',
+        'PORT': '36768',
+        'OPTIONS': {
+            'sslmode': 'require',
+        },
+    },
+
 }
 
 AUTH_USER_MODEL = 'agriconnectbackendapp.User'

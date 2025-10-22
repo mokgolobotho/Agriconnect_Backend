@@ -17,6 +17,7 @@ class User(AbstractUser):
 
 
 class Farm(models.Model):
+    id = models.AutoField(primary_key=True)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.CASCADE,
@@ -26,7 +27,8 @@ class Farm(models.Model):
     suburb = models.CharField(max_length=255, blank=True, null=True)  
     city = models.CharField(max_length=255, blank=True, null=True) 
     province = models.CharField(max_length=255, blank=True, null=True)   
-    country = models.CharField(max_length=255, blank=True, null=True)  
+    country = models.CharField(max_length=255, blank=True, null=True) 
+    code = models.IntegerField(null=True, blank= True) 
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     length = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
@@ -38,6 +40,7 @@ class Farm(models.Model):
         db_table = "Farm"
 
 class Crop(models.Model):
+    id = models.AutoField(primary_key=True)
     farm = models.ForeignKey(
         'Farm',
         on_delete=models.CASCADE,
@@ -54,6 +57,7 @@ class Crop(models.Model):
         db_table = "Crops"
 
 class UserFeedback(models.Model):
+    id = models.AutoField(primary_key=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -69,6 +73,7 @@ class UserFeedback(models.Model):
         ordering = ['-created_at']
 
 class Notification(models.Model):
+    id = models.AutoField(primary_key=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -76,6 +81,10 @@ class Notification(models.Model):
     )
     title = models.CharField(max_length=255)
     message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
     sent_at = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = "Notification"
+
+class Sensor(models.Model):
+    id = models.AutoField(primary_key=True)
