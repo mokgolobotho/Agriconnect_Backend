@@ -52,6 +52,7 @@ class Crop(models.Model):
     quantity = models.FloatField(blank=True, null=True) 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    photoperiod = models.CharField(max_length=255, default="Short Day Period") 
 
     class Meta:
         db_table = "Crops"
@@ -88,3 +89,48 @@ class Notification(models.Model):
 
 class Sensor(models.Model):
     id = models.AutoField(primary_key=True)
+    crop = models.ForeignKey(
+            'Crop',
+            on_delete= models.CASCADE,
+            related_name='sensor'
+    )
+    farm = models.ForeignKey(
+        'Farm',
+        on_delete=models.CASCADE,
+        related_name='sensor'
+    )
+    random_seed = models.IntegerField()
+    class Meta:
+        db_table  = "sensor"
+
+class SensorData(models.Model):
+    id = models.AutoField(primary_key=True)
+    sensor = models.ForeignKey(
+        Sensor,
+        on_delete=models.CASCADE,
+        related_name='data'
+    )
+    temperature = models.FloatField()
+    rainfall = models.FloatField()   
+    ph = models.FloatField()               
+    light_hours = models.FloatField()      
+    light_intensity = models.FloatField()  
+    rh = models.FloatField()
+    nitrogen = models.FloatField()
+    phosphorus = models.FloatField()
+    potassium = models.FloatField()
+    yield_value = models.FloatField()
+    category_ph = models.CharField(max_length=50)
+    soil_type = models.CharField(max_length=50)
+    season = models.CharField(max_length=50)
+    n_ratio = models.FloatField()
+    p_ratio = models.FloatField()
+    k_ratio = models.FloatField()
+    plant_name = models.CharField(max_length=100)
+    photoperiod = models.CharField(max_length=100)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "sensordata"
+
+

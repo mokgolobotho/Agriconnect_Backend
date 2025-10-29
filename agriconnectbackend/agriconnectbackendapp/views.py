@@ -8,8 +8,9 @@ from django.db import connection
 from django.contrib.auth.hashers import check_password
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
-from .ml_model.model import predict_fertility
+from .ml_model.model import predict_fertility, predict_name
 from .ml_model.recommendations import generate_recommendations
+import random
 
 
 
@@ -177,7 +178,7 @@ class AddCrop(APIView):
                     {"error: farm does not exist"},
                     status=status.HTTP_404_NOT_FOUND
                 )
-            
+            photoperiod = predict_name(name)
             crop = Crop.objects.create(
                 farm = farm,
                 name = name,
@@ -186,11 +187,27 @@ class AddCrop(APIView):
                 quantity = quantity,
                 created_at = created_at,
                 updated_at = updated_at,
+                photoperiod = photoperiod,
+            )
+            random_seed = random.choice(range(10, 901, 10))
+
+            sensor = Sensor.objects.create(
+                farm=farm,
+                crop=crop,
+                random_seed=random_seed
             )
 
             return Response({
-                "message": "crop added",
-                "crop" : {crop.name}
+                "message": "Crop and sensor added successfully",
+                "crop": {
+                    "id": crop.id,
+                    "name": crop.name,
+                    "photoperiod": crop.photoperiod
+                },
+                "sensor": {
+                    "id": sensor.id,
+                    "random_seed": sensor.random_seed
+                }
             },
                 status=status.HTTP_201_CREATED
             )
@@ -201,16 +218,22 @@ class AddCrop(APIView):
             )
         
 class FarmCrops(APIView):
-    def get(self, farm_id):
+    def get(self, request, farm_id):
         try:
             farmCrops = Crop.objects.filter(farm_id= farm_id)
-            return Response({"crops": farmCrops}, status = status.HTTP_200_OK)
+            if farmCrops.exists():
+                serializer = CropSerializer(farmCrops, many=True)
+                return Response({"crops": serializer.data}, status=status.HTTP_200_OK)
+            else:
+                return Response(
+                    {"error": "No crops found for this farm"}, status=status.HTTP_404_NOT_FOUND
+                )
         except Crop.DoesNotExist:
             return Response(
                 {"error": "crops do not exist"}, status=status.HTTP_404_NOT_FOUND
             )
 class GetCrop(APIView):
-    def get(self, crop_id):
+    def get(self,request, crop_id):
         try:
             crop = Crop.objects.get(pk = crop_id)
             return Response(
@@ -372,3 +395,41 @@ class PredictFertility(APIView):
         except Crop.DoesNotExist:
             return Response({"error": "Crop not found"}, status=status.HTTP_404_NOT_FOUND)
 
+class AddSensor(APIView):
+    def post(self, request):
+        try:
+            crop_id = request.data.get("crop_id")
+            farm_id = request.data.get("farm_id")
+            random_seed = request.data.get("random_seed")
+            try:
+                farm = Farm.objects.get(pk=farm_id)
+            except(Farm.DoesNotExist):
+                return Response(
+                    {"error: farm does not exist"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            try:
+                crop = Crop.objects.get(pk=crop_id)
+            except(Crop.DoesNotExist):
+                return Response(
+                    {"error: crop does not exist"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            sensor =Sensor.objects.create(
+                farm = farm,
+                crop = crop,
+                random_seed = random_seed,
+            ),
+
+            return Response({
+                    "message": "sensor added",
+                    "sensor" : {sensor.id}
+                },
+                    status=status.HTTP_201_CREATED
+                )
+        except Exception as e:
+            return Response(
+                {"error": f"An error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

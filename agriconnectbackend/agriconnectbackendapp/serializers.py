@@ -10,5 +10,11 @@ class UserSerializer(serializers.ModelSerializer):
 class FarmSerializer(serializers.ModelSerializer):
     class Meta:
         model= Farm
-        fields = ['name', 'suburb', 'city', 'province', 'country', 'latitude', 'longitude', 'length', 'width', 'approximate_size', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'suburb', 'city', 'province', 'country', 'latitude', 'longitude', 'length', 'width', 'approximate_size', 'created_at', 'updated_at']
+        read_only_fields = ['id']
+
+class CropSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Crop
+        fields = ['id', 'name', 'planting_date', 'harvest_date', 'quantity', 'photoperiod' ] 
         read_only_fields = ['id']
