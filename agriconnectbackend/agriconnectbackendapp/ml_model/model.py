@@ -2,10 +2,8 @@ import joblib
 import pandas as pd
 import os
 
-# Get the directory of this file
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Load all saved model assets
 model = joblib.load(os.path.join(BASE_DIR, "fertility_model.pkl"))
 label_encoders = joblib.load(os.path.join(BASE_DIR, "fertility_label_encoders.pkl"))
 target_encoder = joblib.load(os.path.join(BASE_DIR, "fertility_target_encoder.pkl"))
