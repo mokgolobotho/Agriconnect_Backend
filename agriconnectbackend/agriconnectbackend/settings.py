@@ -11,9 +11,10 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 # Quick-start development settings - unsuitable for production
@@ -27,7 +28,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['192.168.0.117', 'localhost', '127.0.0.1', '*']
 
-
+FIREBASE_ADMIN_CREDENTIAL = os.path.join(BASE_DIR, "agriconnectbackend", "firebase_admin.json")
 # Application definition
 
 INSTALLED_APPS = [
@@ -101,8 +102,8 @@ DATABASES = {
 AUTH_USER_MODEL = 'agriconnectbackendapp.User'
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
 
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 

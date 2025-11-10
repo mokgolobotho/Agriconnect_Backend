@@ -14,6 +14,8 @@ urlpatterns = [
     path('addFeedback/', AddFeedback.as_view(), name = 'add-feedback'),
     path('createNotifications/', CreateNotification.as_view(), name = 'create-notification'),
     path('postNotification/', PostNotification.as_view(), name= 'get-crop'),
-    path('predictFertility/<int:crop_id>/', PredictFertility.as_view(), name='predict-fertility'),
+    path('saveFcmToken/', SaveFcmToken.as_view(), name='save-fcm-token'),
+    path('api/farms/<int:farm_id>/fertility-alerts/', FarmFertilityAlerts.as_view(), name='farm-fertility-alerts'),
+    path('api/logout/', LogoutView.as_view(), name='logout')
 
 ]

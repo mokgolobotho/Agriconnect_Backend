@@ -134,3 +134,23 @@ class SensorData(models.Model):
         db_table = "sensordata"
 
 
+class FertilityRecord(models.Model):
+    sensor = models.ForeignKey(Sensor, on_delete=models.CASCADE, related_name="fertility_records")
+    sensor_data = models.OneToOneField(SensorData, on_delete=models.CASCADE, related_name="fertility_record")
+    fertility_level = models.CharField(max_length=50)
+    recommendations = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "fertilityrecord"
+
+class UserDevice(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="devices")
+    name = models.CharField(max_length=100, blank=True)  # e.g., "Thabang's Tablet"
+    fcm_token = models.CharField(max_length=512, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "UserDevice"

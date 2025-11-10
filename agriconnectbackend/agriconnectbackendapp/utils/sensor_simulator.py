@@ -4,11 +4,9 @@ import statistics
 from datetime import datetime
 import requests
 from django.utils import timezone
-from agriconnectbackendapp.models import Sensor, SensorData, Crop, Farm
-from agriconnectbackendapp.views import PredictFertility 
+from agriconnectbackendapp.models import Sensor, SensorData, Crop, FertilityRecord
 from agriconnectbackendapp.utils.fertility import FertilityPredictor
- # your class-based predictor
-#from agriconnectbackendapp.utils.push import send_push_notification  # your FCM helper
+from agriconnectbackendapp.utils.push import PushNotification
 
 
 class SensorSimulator:
@@ -82,7 +80,7 @@ class SensorSimulator:
         """Add data to buffer, process average after 15 readings"""
         buf = self.buffers[sensor.id]
         buf.append(data)
-        if len(buf) >= 1:  # 15 readings ~ 15 minutes
+        if len(buf) >= 15:
             self.process_average(sensor, buf)
             self.buffers[sensor.id] = []
 
@@ -106,8 +104,8 @@ class SensorSimulator:
             sensor=sensor,
             plant_name=crop.name,
             photoperiod=crop.photoperiod,
-            temperature=weather.get("temp_c"),  # fallback
-            rainfall=weather.get("precip_mm"),  # fallback
+            temperature=weather.get("temp_c"),
+            rainfall=weather.get("precip_mm"),
             ph=avg_data["pH"],
             light_hours=avg_data["Light_Hours"],
             light_intensity=avg_data["Light_Intensity"],
@@ -155,12 +153,20 @@ class SensorSimulator:
         predictor = FertilityPredictor(crop.id, sensor_data_dict)
         fertility, recommendations = predictor.predict()
 
+        FertilityRecord.objects.create(
+            sensor=sensor,
+            sensor_data=sensor_data_obj,
+            fertility_level=fertility,
+            recommendations=recommendations
+        )
+
+        print(f"📦 Fertility record saved for {crop.name} (Sensor #{sensor.id})")
         print(f"Predicted fertility: {fertility}, Recommendations: {recommendations}")
         
         # Send push notification if fertility is not High
         if fertility != "High":
             message = f"⚠️ Fertility for {crop.name} is {fertility}! Check recommendations."
-            #send_push_notification(user_id=crop.farm.owner.id, message=message)
+            PushNotification.send_push_notification(user_id=crop.farm.owner.id, message=message)
             print(f"📣 Notification sent: {message}")
 
     def run(self, interval_seconds=60):

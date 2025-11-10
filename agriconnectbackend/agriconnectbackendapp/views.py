@@ -11,7 +11,9 @@ from django.http import JsonResponse
 from .ml_model.model import predict_fertility, predict_name
 from .ml_model.recommendations import generate_recommendations
 import random
-
+from datetime import timedelta
+from django.utils import timezone
+from django.contrib.auth import logout
 
 
 # Create your views here.
@@ -310,88 +312,105 @@ class PostNotification(APIView):
                 {"error": "Notification does not exist"}, status=status.HTTP_404_NOT_FOUND
             )
 
-
-class PredictFertility(APIView):
-    def get(self, request, crop_id):
+class SaveFcmToken(APIView):
+    def post(self, request):
         try:
-            crop = Crop.objects.get(pk=crop_id)
+            user_id = request.data.get("user_id")
+            token = request.data.get("fcm_token")
 
-            """
-            # Example: get data from sensors or dummy values
-            sensor_data = {
-                "Name": crop.name,
-                "Photoperiod": "Day Neutral",
-                "Temperature": 22.5,
-                "Rainfall": 700,
-                "pH": 6.3,
-                "Light_Hours": 12,
-                "Light_Intensity": 500,
-                "Rh": 90,
-                "Nitrogen": 150,
-                "Phosphorus": 100,
-                "Potassium": 200,
-                "Yield": 20,
-                "Category_pH": "low_acidic",
-                "Soil_Type": "Loam",
-                "Season": "Summer",
-                "N_Ratio": 10,
-                "P_Ratio": 10,
-                "K_Ratio": 10
-            }
-            
-            sensor_data = {
-                "Name": crop.name,
-                "Photoperiod": "Short Day Period",
-                "Temperature": 15.0,
-                "Rainfall": 200,
-                "pH": 5.2,
-                "Light_Hours": 8,
-                "Light_Intensity": 300,
-                "Rh": 60,
-                "Nitrogen": 50,
-                "Phosphorus": 30,
-                "Potassium": 40,
-                "Yield": 5,
-                "Category_pH": "high_acidic",
-                "Soil_Type": "Sandy",
-                "Season": "Winter",
-                "N_Ratio": 3,
-                "P_Ratio": 2,
-                "K_Ratio": 4
-            }
-            """
-            sensor_data = {
-                "Name": crop.name,
-                "Photoperiod": "Long Day Period",
-                "Temperature": 25.0,
-                "Rainfall": 800,
-                "pH": 6.5,
-                "Light_Hours": 14,
-                "Light_Intensity": 600,
-                "Rh": 85,
-                "Nitrogen": 200,
-                "Phosphorus": 150,
-                "Potassium": 180,
-                "Yield": 30,
-                "Category_pH": "low_acidic",
-                "Soil_Type": "Loam",
-                "Season": "Summer",
-                "N_Ratio": 12,
-                "P_Ratio": 10,
-                "K_Ratio": 12
-            }
+            if not user_id or not token:
+                return Response(
+                    {"error": "user_id and fcm_token are required"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
+            user = User.objects.get(id=user_id)
 
-            fertility = predict_fertility(sensor_data)
-            recommendations = generate_recommendations(sensor_data) if fertility != "High" else []
+            # Always ensure one active token per user
+            UserDevice.objects.filter(user=user).delete()
+
+            # Save the new token
+            UserDevice.objects.create(
+                user=user,
+                fcm_token=token,
+                active=True
+            )
+
+            return Response(
+                {"success": True, "message": "FCM token saved successfully"},
+                status=status.HTTP_200_OK
+            )
+
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class FarmFertilityAlerts(APIView):
+    def get(self, request, farm_id):
+        try:
+            three_days_ago = timezone.now() - timedelta(days=3)
+
+            # Filter fertility records for this farm with low fertility in the last 3 days
+            records = FertilityRecord.objects.filter(
+                sensor__farm__id=farm_id,
+                fertility_level__iexact='Low',
+                created_at__gte=three_days_ago
+            ).order_by('-created_at')
+
+            serializer = FertilityRecordSerializer(records, many=True)
 
             return Response({
-                "crop": crop.name,
-                "predicted_fertility": fertility,
-                "recommendations": recommendations
+                "success": True,
+                "farm_id": farm_id,
+                "count": len(serializer.data),
+                "alerts": serializer.data
             }, status=status.HTTP_200_OK)
-            #return Response({"crop": crop.name, "predicted_fertility": fertility}, status=status.HTTP_200_OK)
 
-        except Crop.DoesNotExist:
-            return Response({"error": "Crop not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                "success": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class LogoutView(APIView):
+    """
+    Deactivate all devices for a given user_id sent in the request body.
+    """
+
+    def post(self, request):
+        try:
+            user_id = request.data.get("user_id")
+            if not user_id:
+                return Response({
+                    "success": False,
+                    "message": "user_id is required."
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            user = User.objects.filter(id=user_id).first()
+            if not user:
+                return Response({
+                    "success": False,
+                    "message": "User not found."
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            # Deactivate all devices
+            UserDevice.objects.filter(user=user, active=True).update(active=False)
+
+            return Response({
+                "success": True,
+                "message": "Devices deactivated successfully."
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "success": False,
+                "message": f"Logout failed: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
