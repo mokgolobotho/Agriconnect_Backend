@@ -54,4 +54,4 @@ def predict_name(name):
         return photoperiod
     except Exception as e:
         print(f"⚠️ Photoperiod prediction error: {e}")
-        return "Unknown"
+        return "Short Day Period"

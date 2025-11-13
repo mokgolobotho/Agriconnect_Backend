@@ -7,7 +7,6 @@ class PushNotification:
 
     @staticmethod
     def send_push_notification(user_id: int, message: str, title: str = "AgriConnect Alert"):
-        # Initialize Firebase if not done yet
         init_firebase()
 
         devices = UserDevice.objects.filter(user_id=user_id, active=True)

@@ -146,8 +146,8 @@ class FertilityRecord(models.Model):
 
 class UserDevice(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="devices")
-    name = models.CharField(max_length=100, blank=True)  # e.g., "Thabang's Tablet"
-    fcm_token = models.CharField(max_length=512, unique=True)
+    name = models.CharField(max_length=100, blank=True)
+    fcm_token = models.CharField(max_length=512)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     active = models.BooleanField(default=True)

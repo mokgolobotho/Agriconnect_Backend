@@ -15,7 +15,13 @@ urlpatterns = [
     path('createNotifications/', CreateNotification.as_view(), name = 'create-notification'),
     path('postNotification/', PostNotification.as_view(), name= 'get-crop'),
     path('saveFcmToken/', SaveFcmToken.as_view(), name='save-fcm-token'),
-    path('api/farms/<int:farm_id>/fertility-alerts/', FarmFertilityAlerts.as_view(), name='farm-fertility-alerts'),
-    path('api/logout/', LogoutView.as_view(), name='logout')
+    path('farms/<int:farm_id>/fertility-alerts/', FarmFertilityAlerts.as_view(), name='farm-fertility-alerts'),
+    path('logout/', LogoutView.as_view(), name='logout'),
+    path('sensorData/<int:crop_id>/', CropSensorDataView.as_view(), name='crop-sensor-data'),
+    path('feedback/', FeedbackView.as_view(), name='feedback'),
+    path('profile/<int:user_id>/', UserProfileView.as_view(), name='user-profile-by-id'),
+    path('crops/<int:crop_id>/fertility-recommendations/', CropFertilityRecommendations.as_view(), name='crop_fertility_recommendations'),
+    path('getFarmHarvestedCrops/<int:farm_id>', FarmHarvestedCrops.as_view(), name='farm-harvested-crops'),
 
-]
+
+] 

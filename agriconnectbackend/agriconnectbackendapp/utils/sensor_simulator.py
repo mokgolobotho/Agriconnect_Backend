@@ -18,13 +18,10 @@ class SensorSimulator:
         if random_seed is not None:
             random.seed(random_seed)
 
-        # Load all sensors
         self.sensors = Sensor.objects.all()
-        # Initialize buffer for each sensor: {sensor_id: [data1, data2, ...]}
         self.buffers = {sensor.id: [] for sensor in self.sensors}
 
     def generate_sensor_data(self, sensor):
-        """Generate 1-min simulated data for a sensor"""
         return {
             "timestamp": timezone.now(),
             "pH": round(random.uniform(5.5, 8.0), 1),
@@ -41,7 +38,6 @@ class SensorSimulator:
         }
 
     def get_weather(self, farm):
-        """Fetch weather for a farm's coordinates"""
         if farm.latitude is None or farm.longitude is None:
             return {}
         q = f"{farm.latitude},{farm.longitude}"
@@ -64,7 +60,6 @@ class SensorSimulator:
         return {}
 
     def determine_season(self, date=None):
-        """Return season based on month (Southern Hemisphere example)"""
         date = date or timezone.now().date()
         month = date.month
         if month in [12, 1, 2]:
@@ -77,15 +72,18 @@ class SensorSimulator:
             return "Spring"
 
     def add_to_buffer(self, sensor, data):
-        """Add data to buffer, process average after 15 readings"""
+        if sensor.id not in self.buffers:
+            print(f"🆕 Detected new sensor #{sensor.id}, creating buffer...")
+            self.buffers[sensor.id] = []
+
         buf = self.buffers[sensor.id]
         buf.append(data)
-        if len(buf) >= 15:
+
+        if len(buf) >= 5:
             self.process_average(sensor, buf)
             self.buffers[sensor.id] = []
 
     def process_average(self, sensor, data_list):
-        """Compute averages, fetch weather, save to DB, run fertility prediction"""
         numeric_fields = ["pH", "Light_Hours", "Light_Intensity",
                           "Rh", "Nitrogen", "Phosphorus", "Potassium",
                           "Yield", "N_Ratio", "P_Ratio", "K_Ratio"]
@@ -99,7 +97,6 @@ class SensorSimulator:
         weather = self.get_weather(farm)
         season = self.determine_season()
 
-        # Save sensor data
         sensor_data_obj = SensorData.objects.create(
             sensor=sensor,
             plant_name=crop.name,
@@ -127,7 +124,6 @@ class SensorSimulator:
         if weather:
             print(f"🌤️ Weather data: {weather}")
 
-        # Prepare data for fertility prediction
         sensor_data_dict = {
             "Name": crop.name,
             "Photoperiod": crop.photoperiod,
@@ -149,7 +145,6 @@ class SensorSimulator:
             "K_Ratio": sensor_data_obj.k_ratio,
         }
 
-        # Predict fertility
         predictor = FertilityPredictor(crop.id, sensor_data_dict)
         fertility, recommendations = predictor.predict()
 
@@ -163,16 +158,15 @@ class SensorSimulator:
         print(f"📦 Fertility record saved for {crop.name} (Sensor #{sensor.id})")
         print(f"Predicted fertility: {fertility}, Recommendations: {recommendations}")
         
-        # Send push notification if fertility is not High
         if fertility != "High":
             message = f"⚠️ Fertility for {crop.name} is {fertility}! Check recommendations."
             PushNotification.send_push_notification(user_id=crop.farm.owner.id, message=message)
             print(f"📣 Notification sent: {message}")
 
     def run(self, interval_seconds=60):
-        """Run simulation for all sensors continuously"""
         print("🌱 Starting simulation for all sensors...")
         while True:
+            self.sensors = Sensor.objects.all()
             for sensor in self.sensors:
                 data = self.generate_sensor_data(sensor)
                 print(f"[{data['timestamp']}] Sensor #{sensor.id} reading for {sensor.crop.name}: {data}")

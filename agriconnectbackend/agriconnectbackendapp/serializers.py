@@ -4,8 +4,14 @@ from .models import *
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name',  'username', 'email', 'cell_number', 'password']
+        fields = ['id', 'first_name', 'last_name', 'title', 'gender', 'username', 'email', 'cell_number', 'password', 'photo']
         read_only_fields = ['id']
+
+    def get_photo(self, obj):
+        request = self.context.get('request')
+        if obj.photo:
+            return request.build_absolute_uri(obj.photo.url)
+        return None
 
 class FarmSerializer(serializers.ModelSerializer):
     class Meta:
@@ -26,12 +32,5 @@ class FertilityRecordSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FertilityRecord
-        fields = [
-            'id',
-            'sensor_id',
-            'crop_name',
-            'fertility_level',
-            'recommendations',
-            'created_at',
-            'farm_id'
+        fields = ['id', 'sensor_id', 'crop_name', 'fertility_level', 'recommendations', 'created_at', 'farm_id'
         ]

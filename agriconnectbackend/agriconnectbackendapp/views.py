@@ -14,12 +14,26 @@ import random
 from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth import logout
+from datetime import datetime
+from rest_framework.parsers import MultiPartParser, FormParser
 
 
 # Create your views here.
 class UserListCreateView(generics.ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        return Response({
+            "success": True,
+            "data": {
+                "user": serializer.data,
+            }
+        }, status=status.HTTP_201_CREATED)
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -167,7 +181,7 @@ class AddCrop(APIView):
         try:
             farm_id = request.data.get("farm_id")
             name = request.data.get("name")
-            planting_date = request.data.get("planting_date")
+            planting_date = request.data.get("planting_date")   
             harvest_date = request.data.get("harvest_date")
             quantity = request.data.get("quantity")
             created_at = request.data.get("created_at")
@@ -180,6 +194,7 @@ class AddCrop(APIView):
                     {"error: farm does not exist"},
                     status=status.HTTP_404_NOT_FOUND
                 )
+             
             photoperiod = predict_name(name)
             crop = Crop.objects.create(
                 farm = farm,
@@ -222,7 +237,7 @@ class AddCrop(APIView):
 class FarmCrops(APIView):
     def get(self, request, farm_id):
         try:
-            farmCrops = Crop.objects.filter(farm_id= farm_id)
+            farmCrops = Crop.objects.filter(farm_id=farm_id, harvest_date__isnull=True)
             if farmCrops.exists():
                 serializer = CropSerializer(farmCrops, many=True)
                 return Response({"crops": serializer.data}, status=status.HTTP_200_OK)
@@ -234,6 +249,7 @@ class FarmCrops(APIView):
             return Response(
                 {"error": "crops do not exist"}, status=status.HTTP_404_NOT_FOUND
             )
+        
 class GetCrop(APIView):
     def get(self,request, crop_id):
         try:
@@ -317,7 +333,7 @@ class SaveFcmToken(APIView):
         try:
             user_id = request.data.get("user_id")
             token = request.data.get("fcm_token")
-
+            print("token:", token)
             if not user_id or not token:
                 return Response(
                     {"error": "user_id and fcm_token are required"},
@@ -326,14 +342,12 @@ class SaveFcmToken(APIView):
 
             user = User.objects.get(id=user_id)
 
-            # Always ensure one active token per user
-            UserDevice.objects.filter(user=user).delete()
+            UserDevice.objects.filter(user=user).update(active=False)
 
-            # Save the new token
-            UserDevice.objects.create(
+            created = UserDevice.objects.update_or_create(
                 user=user,
                 fcm_token=token,
-                active=True
+                defaults={"active": True}
             )
 
             return Response(
@@ -353,12 +367,12 @@ class SaveFcmToken(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
 class FarmFertilityAlerts(APIView):
     def get(self, request, farm_id):
         try:
             three_days_ago = timezone.now() - timedelta(days=3)
 
-            # Filter fertility records for this farm with low fertility in the last 3 days
             records = FertilityRecord.objects.filter(
                 sensor__farm__id=farm_id,
                 fertility_level__iexact='Low',
@@ -381,9 +395,6 @@ class FarmFertilityAlerts(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class LogoutView(APIView):
-    """
-    Deactivate all devices for a given user_id sent in the request body.
-    """
 
     def post(self, request):
         try:
@@ -414,3 +425,138 @@ class LogoutView(APIView):
                 "success": False,
                 "message": f"Logout failed: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class CropSensorDataView(APIView):
+    def get(self, request, crop_id):
+        try:
+            sensor = Sensor.objects.filter(crop_id=crop_id).first()
+            if not sensor:
+                return Response(
+                    {"success": False, "message": "No sensor found for this crop."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            data = SensorData.objects.filter(sensor=sensor).order_by('-recorded_at')
+
+            records = []
+            for record in data:
+                records.append({
+                    "id": record.id,
+                    "temperature": record.temperature,
+                    "rainfall": record.rainfall,
+                    "ph": record.ph,
+                    "light_hours": record.light_hours,
+                    "light_intensity": record.light_intensity,
+                    "rh": record.rh,
+                    "nitrogen": record.nitrogen,
+                    "phosphorus": record.phosphorus,
+                    "potassium": record.potassium,
+                    "yield_value": record.yield_value,
+                    "category_ph": record.category_ph,
+                    "soil_type": record.soil_type,
+                    "season": record.season,
+                    "n_ratio": record.n_ratio,
+                    "p_ratio": record.p_ratio,
+                    "k_ratio": record.k_ratio,
+                    "plant_name": record.plant_name,
+                    "photoperiod": record.photoperiod,
+                    "recorded_at": record.recorded_at,
+                })
+
+            return Response(
+                {"success": True, "sensor_id": sensor.id, "records": records},
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            return Response(
+                {"success": False, "message": f"Error: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class FeedbackView(APIView):
+    def post(self, request):
+        try:
+            user_id = request.data.get('user_id')
+            message = request.data.get('message')
+            rating = request.data.get('rating')
+
+            if not message:
+                return Response({'success': False, 'message': 'Message is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+            user = User.objects.filter(id=user_id).first() if user_id else None
+
+            feedback = UserFeedback.objects.create(
+                user=user,
+                message=message,
+                rating=rating
+            )
+
+            return Response({'success': True, 'message': 'Feedback submitted successfully'}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({'success': False, 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)         
+
+
+class UserProfileView(APIView):
+    parser_classes = [MultiPartParser, FormParser] 
+
+    def get(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+            serializer = UserSerializer(user, context={'request': request})
+            return Response({'success': True, 'data': serializer.data})
+        except User.DoesNotExist:
+            return Response(
+                {'success': False, 'message': 'User not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    def put(self, request, user_id):
+        user = User.objects.get(id=user_id)
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'success': True, 'data': serializer.data})
+        return Response({'success': False, 'errors': serializer.errors})
+
+class CropFertilityRecommendations(APIView):
+    def get(self, request, crop_id):
+        try:
+            since = timezone.now() - timedelta(hours=24)
+
+            records = FertilityRecord.objects.filter(
+                sensor__crop__id=crop_id,
+                created_at__gte=since
+            ).order_by('-created_at')
+
+            serializer = FertilityRecordSerializer(records, many=True)
+
+            return Response({
+                "success": True,
+                "crop_id": crop_id,
+                "count": len(serializer.data),
+                "records": serializer.data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "success": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class FarmHarvestedCrops(APIView):
+    def get(self, request, farm_id):
+        try:
+            farmCrops = Crop.objects.filter(farm_id=farm_id, harvest_date__isnull=False)
+            if farmCrops.exists():
+                serializer = CropSerializer(farmCrops, many=True)
+                return Response({"crops": serializer.data}, status=status.HTTP_200_OK)
+            else:
+                return Response(
+                    {"error": "No crops found for this farm"}, status=status.HTTP_404_NOT_FOUND
+                )
+        except Crop.DoesNotExist:
+            return Response(
+                {"error": "crops do not exist"}, status=status.HTTP_404_NOT_FOUND
+            )
