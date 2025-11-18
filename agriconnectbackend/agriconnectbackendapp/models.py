@@ -13,7 +13,7 @@ class User(AbstractUser):
     title = models.CharField(max_length=10)
     photo = models.ImageField(upload_to='profile_photos/', blank=True, null=True)
     class Meta:
-        db_table = "User"
+        db_table = "user"
 
 
 class Farm(models.Model):
@@ -37,7 +37,7 @@ class Farm(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     class Meta:
-        db_table = "Farm"
+        db_table = "farm"
 
 class Crop(models.Model):
     id = models.AutoField(primary_key=True)
@@ -55,7 +55,7 @@ class Crop(models.Model):
     photoperiod = models.CharField(max_length=255, default="Short Day Period") 
 
     class Meta:
-        db_table = "Crops"
+        db_table = "crops"
 
 class UserFeedback(models.Model):
     id = models.AutoField(primary_key=True)
@@ -85,7 +85,7 @@ class Notification(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     sent_at = models.DateTimeField(auto_now_add=True)
     class Meta:
-        db_table = "Notification"
+        db_table = "notification"
 
 class Sensor(models.Model):
     id = models.AutoField(primary_key=True)
@@ -131,7 +131,7 @@ class SensorData(models.Model):
     recorded_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = "sensordata"
+        db_table = "sensor_data"
 
 
 class FertilityRecord(models.Model):
@@ -142,7 +142,7 @@ class FertilityRecord(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = "fertilityrecord"
+        db_table = "fertility_record"
 
 class UserDevice(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="devices")
@@ -153,4 +153,21 @@ class UserDevice(models.Model):
     active = models.BooleanField(default=True)
 
     class Meta:
-        db_table = "UserDevice"
+        db_table = "user_device"
+
+class WeatherAlert(models.Model):
+    SEVERITY_CHOICES = (
+        ("HIGH", "High"),
+        ("EXTREME", "Extreme"),
+    )
+
+    farm = models.ForeignKey(Farm, on_delete=models.CASCADE)
+    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES)
+    weather_code = models.IntegerField()
+    alert_title = models.CharField(max_length=100)
+    recommendation = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "weather_alert"
+ 

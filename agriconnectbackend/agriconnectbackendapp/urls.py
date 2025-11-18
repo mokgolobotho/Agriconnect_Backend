@@ -22,6 +22,9 @@ urlpatterns = [
     path('profile/<int:user_id>/', UserProfileView.as_view(), name='user-profile-by-id'),
     path('crops/<int:crop_id>/fertility-recommendations/', CropFertilityRecommendations.as_view(), name='crop_fertility_recommendations'),
     path('getFarmHarvestedCrops/<int:farm_id>', FarmHarvestedCrops.as_view(), name='farm-harvested-crops'),
+    path('getFarmWeatherAlerts/<int:farm_id>', FarmWeatherAlerts.as_view(), name='farm-weather-alerts'),
+    path('harvestCrop/<int:crop_id>', HarvestCrop.as_view(), name='harvest-crop'),
+
 
 
 ] 

@@ -528,7 +528,10 @@ class CropFertilityRecommendations(APIView):
             records = FertilityRecord.objects.filter(
                 sensor__crop__id=crop_id,
                 created_at__gte=since
+            ).exclude(
+                fertility_level='High'
             ).order_by('-created_at')
+
 
             serializer = FertilityRecordSerializer(records, many=True)
 
@@ -560,3 +563,64 @@ class FarmHarvestedCrops(APIView):
             return Response(
                 {"error": "crops do not exist"}, status=status.HTTP_404_NOT_FOUND
             )
+
+class FarmWeatherAlerts(APIView):
+    def get(self, request, farm_id):
+        try:
+            one_hour_ago = timezone.now() - timedelta(hours=1)
+
+            alerts = WeatherAlert.objects.filter(
+                farm_id=farm_id,
+                timestamp__gte=one_hour_ago
+            ).order_by("-timestamp")
+
+            if alerts.exists():
+                alerts_data = [
+                    {
+                        "id": alert.id,
+                        "severity": alert.severity,
+                        "weather_code": alert.weather_code,
+                        "alert_title": alert.alert_title,
+                        "recommendation": alert.recommendation,
+                        "timestamp": alert.timestamp
+                    }
+                    for alert in alerts
+                ]
+
+                return Response(
+                    {"alerts": alerts_data},
+                    status=status.HTTP_200_OK
+                )
+            else:
+                return Response(
+                    {"error": "No alerts found for this farm within the last hour"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            ) 
+
+class HarvestCrop(APIView):
+    def post(self, request, crop_id):
+        try:
+            crop = Crop.objects.get(id=crop_id)
+
+            today = timezone.now().date()
+            min_allowed_date = crop.planting_date + timedelta(days=30)
+
+            if today < min_allowed_date:
+                return Response(
+                    {"error": "Crop must be at least 1 month old before harvesting."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            crop.harvest_date = today
+            crop.save()
+
+            return Response({"message": "Crop harvested successfully!"}, status=200)
+
+        except Crop.DoesNotExist:
+            return Response({"error": "Crop not found"}, status=404)
