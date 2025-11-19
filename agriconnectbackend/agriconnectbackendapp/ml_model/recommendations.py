@@ -7,85 +7,105 @@ def generate_recommendations(sensor_data):
         "Phosphorus": (120, 200),
         "Potassium": (250, 350),
         "pH": (6.0, 7.5),
-        "Temperature": (20, 30),  # °C
-        "Rainfall": (600, 800),   # mm
-        "Light_Hours": (8, 14),
-        "Rh": (50, 80),
-        "Light_Intensity": (400, 900)
+        "Temperature": (20, 30),      # Air temperature in °C
+        "Rainfall": (600, 800),       # mm
+        "Rh": (50, 80),               # Relative Humidity %
+        "Light_Hours": (8, 14),       # Hours
+        "Light_Intensity": (400, 900) # Lux
     }
 
-    # --- Check individual parameters ---
-    for param, (low, high) in optimal_ranges.items():
-        value = sensor_data.get(param)
+    # --- Check N, P, K individually ---
+    for nutrient in ["Nitrogen", "Phosphorus", "Potassium"]:
+        value = sensor_data.get(nutrient)
         if value is None:
             continue
-
+        low, high = optimal_ranges[nutrient]
         if value < low:
-            if param in ["Nitrogen", "Phosphorus", "Potassium"]:
-                recommendations.append(
-                    f"Increase {param} (currently {value}, optimal {low}-{high}). "
-                    f"Consider applying a balanced fertilizer such as NPK 20-20-20."
-                )
-            elif param == "pH":
-                recommendations.append(
-                    f"Increase soil pH (currently {value}, optimal {low}-{high}). Apply lime or dolomite."
-                )
-            elif param == "Temperature":
-                recommendations.append(
-                    f"Temperature is low ({value}°C). Use mulch or covers to retain warmth."
-                )
-            elif param == "Rainfall":
-                recommendations.append(
-                    f"Low rainfall detected ({value} mm). Please irrigate your crops to maintain soil moisture."
-                )
-            elif param == "Light_Hours":
-                recommendations.append(
-                    f"Insufficient light ({value} hours). Move plants to sunnier spots."
-                )
-            elif param == "Light_Intensity":
-                recommendations.append(
-                    f"Light intensity is low ({value}). Adjust shade or clean leaves."
-                )
+            recommendations.append(
+                f"Increase {nutrient} (currently {value}, optimal {low}-{high}). "
+                f"Consider applying a balanced fertilizer such as NPK 20-20-20."
+            )
         elif value > high:
-            if param in ["Nitrogen", "Phosphorus", "Potassium"]:
-                recommendations.append(
-                    f"Reduce {param} levels (currently {value}, optimal {low}-{high}). Over-fertilization can damage plants."
-                )
-            elif param == "pH":
-                recommendations.append(
-                    f"Soil pH is high ({value}). Apply sulfur or compost to reduce pH."
-                )
-            elif param == "Temperature":
-                recommendations.append(
-                    f"Temperature is high ({value}°C). Use shade nets or water more frequently."
-                )
-            elif param == "Rainfall":
-                recommendations.append(
-                    f"Excessive rainfall ({value} mm). Ensure proper drainage."
-                )
-            elif param == "Light_Hours":
-                recommendations.append(
-                    f"Too much light ({value} hours). Provide shade if necessary."
-                )
-            elif param == "Light_Intensity":
-                recommendations.append(
-                    f"Excessive light intensity ({value}). Use shade nets to protect crops."
-                )
+            recommendations.append(
+                f"Reduce {nutrient} levels (currently {value}, optimal {low}-{high}). Over-fertilization can damage plants."
+            )
 
-    # --- Coupled Temperature & Rainfall Logic ---
+    # --- Check pH ---
+    ph = sensor_data.get("pH")
+    if ph is not None:
+        low, high = optimal_ranges["pH"]
+        if ph < low:
+            recommendations.append(
+                f"Increase soil pH (currently {ph}, optimal {low}-{high}). Apply lime or dolomite."
+            )
+        elif ph > high:
+            recommendations.append(
+                f"Soil pH is high ({ph}). Apply sulfur or compost to reduce pH."
+            )
+
+    # --- Check Light Hours and Light Intensity ---
+    for light_param in ["Light_Hours", "Light_Intensity"]:
+        value = sensor_data.get(light_param)
+        if value is None:
+            continue
+        low, high = optimal_ranges[light_param]
+        if value < low:
+            msg = (
+                f"Insufficient {light_param.replace('_', ' ')} ({value}). "
+                f"{'Move plants to sunnier spots.' if light_param == 'Light_Hours' else 'Adjust shade or clean leaves.'}"
+            )
+            recommendations.append(msg)
+        elif value > high:
+            msg = (
+                f"Too much {light_param.replace('_', ' ')} ({value}). "
+                f"{'Provide shade if necessary.' if light_param == 'Light_Hours' else 'Use shade nets to protect crops.'}"
+            )
+            recommendations.append(msg)
+
+    # --- Combined Air Temperature, Rainfall, and RH Logic ---
     temp = sensor_data.get("Temperature")
     rain = sensor_data.get("Rainfall")
+    rh = sensor_data.get("Rh")
 
-    if temp is not None and rain is not None:
-        if temp > 30 and rain < 600:
+    if temp is not None and rain is not None and rh is not None:
+        low_temp, high_temp = optimal_ranges["Temperature"]
+        low_rain, high_rain = optimal_ranges["Rainfall"]
+        low_rh, high_rh = optimal_ranges["Rh"]
+
+        if temp > high_temp and rain < low_rain and rh < low_rh:
             recommendations.append(
-                "⚠️ High temperature with low rainfall — irrigation is recommended."
+                "⚠️ High air temperature with low rainfall and low humidity — irrigation is strongly recommended."
             )
-        elif temp < 20 and rain > 800:
+        elif temp < low_temp and rain > high_rain and rh > high_rh:
             recommendations.append(
-                "⚠️ Cool and wet conditions — avoid overwatering and ensure proper drainage."
+                "⚠️ Cool, wet, and humid conditions — avoid overwatering and ensure proper drainage."
+            )
+        elif temp > high_temp:
+            recommendations.append(
+                f"Air temperature is high ({temp}°C). Use shade nets or water more frequently."
+            )
+        elif temp < low_temp:
+            recommendations.append(
+                f"Air temperature is low ({temp}°C). Use mulch or covers to retain warmth."
+            )
+        if rain < low_rain:
+            recommendations.append(
+                f"Low rainfall detected ({rain} mm). Please irrigate your crops to maintain soil moisture."
+            )
+        elif rain > high_rain:
+            recommendations.append(
+                f"Excessive rainfall ({rain} mm). Ensure proper drainage."
+            )
+        if rh < low_rh:
+            recommendations.append(
+                f"Relative Humidity is low ({rh}%). Consider misting or increasing humidity."
+            )
+        elif rh > high_rh:
+            recommendations.append(
+                f"Relative Humidity is high ({rh}%). Ensure proper airflow to prevent fungal diseases."
             )
 
+    # --- Fallback ---
     if not recommendations:
         recommendations.append("All parameters are within optimal ranges. Keep up the good work!")
 

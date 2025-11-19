@@ -3,10 +3,10 @@ import time
 import statistics
 from datetime import datetime
 import requests
-from django.utils import timezone
 from agriconnectbackendapp.models import Sensor, SensorData, Crop, FertilityRecord
 from agriconnectbackendapp.utils.fertility import FertilityPredictor
 from agriconnectbackendapp.utils.push import PushNotification
+
 
 
 class SensorSimulator:
@@ -23,7 +23,7 @@ class SensorSimulator:
 
     def generate_sensor_data(self, sensor):
         return {
-            "timestamp": timezone.now(),
+            "timestamp": datetime.now(),
             "pH": round(random.uniform(5.5, 8.0), 1),
             "Light_Hours": random.randint(8, 14),
             "Light_Intensity": random.randint(200, 1000),
@@ -60,7 +60,7 @@ class SensorSimulator:
         return {}
 
     def determine_season(self, date=None):
-        date = date or timezone.now().date()
+        date = date or datetime.now().date()
         month = date.month
         if month in [12, 1, 2]:
             return "Summer"
@@ -79,7 +79,7 @@ class SensorSimulator:
         buf = self.buffers[sensor.id]
         buf.append(data)
 
-        if len(buf) >= 5:
+        if len(buf) >= 15:
             self.process_average(sensor, buf)
             self.buffers[sensor.id] = []
 
@@ -117,7 +117,6 @@ class SensorSimulator:
             n_ratio=avg_data["N_Ratio"],
             p_ratio=avg_data["P_Ratio"],
             k_ratio=avg_data["K_Ratio"],
-            recorded_at=timezone.now()
         )
 
         print(f"[{datetime.now()}] ✅ Saved 15-min average for {crop.name} (Sensor #{sensor.id})")
@@ -152,7 +151,8 @@ class SensorSimulator:
             sensor=sensor,
             sensor_data=sensor_data_obj,
             fertility_level=fertility,
-            recommendations=recommendations
+            recommendations=recommendations,
+            created_at = datetime.now()
         )
 
         print(f"📦 Fertility record saved for {crop.name} (Sensor #{sensor.id})")

@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
+from datetime import datetime
+
 
 # Create your models here.
 class User(AbstractUser):
@@ -34,8 +36,8 @@ class Farm(models.Model):
     length = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     width = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     approximate_size = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(default=datetime.now)
+    updated_at = models.DateTimeField(default=datetime.now)
     class Meta:
         db_table = "farm"
 
@@ -50,8 +52,8 @@ class Crop(models.Model):
     planting_date = models.DateField(blank=True, null=True)
     harvest_date = models.DateField(blank=True, null=True)
     quantity = models.FloatField(blank=True, null=True) 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(default=datetime.now)
+    updated_at = models.DateTimeField(default=datetime.now)
     photoperiod = models.CharField(max_length=255, default="Short Day Period") 
 
     class Meta:
@@ -68,7 +70,7 @@ class UserFeedback(models.Model):
     )
     message = models.TextField()
     rating = models.PositiveSmallIntegerField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=datetime.now)
     class Meta:
         db_table = "Feedback"
         ordering = ['-created_at']
@@ -82,8 +84,8 @@ class Notification(models.Model):
     )
     title = models.CharField(max_length=255)
     message = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    sent_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=datetime.now)
+    sent_at = models.DateTimeField(default=datetime.now)
     class Meta:
         db_table = "notification"
 
@@ -128,7 +130,7 @@ class SensorData(models.Model):
     k_ratio = models.FloatField()
     plant_name = models.CharField(max_length=100)
     photoperiod = models.CharField(max_length=100)
-    recorded_at = models.DateTimeField(auto_now_add=True)
+    recorded_at = models.DateTimeField(default=datetime.now)
 
     class Meta:
         db_table = "sensor_data"
@@ -139,7 +141,7 @@ class FertilityRecord(models.Model):
     sensor_data = models.OneToOneField(SensorData, on_delete=models.CASCADE, related_name="fertility_record")
     fertility_level = models.CharField(max_length=50)
     recommendations = models.JSONField(default=list)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=datetime.now)
 
     class Meta:
         db_table = "fertility_record"
@@ -148,8 +150,8 @@ class UserDevice(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="devices")
     name = models.CharField(max_length=100, blank=True)
     fcm_token = models.CharField(max_length=512)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(default=datetime.now)
+    updated_at = models.DateTimeField(default=datetime.now)
     active = models.BooleanField(default=True)
 
     class Meta:
@@ -166,7 +168,7 @@ class WeatherAlert(models.Model):
     weather_code = models.IntegerField()
     alert_title = models.CharField(max_length=100)
     recommendation = models.TextField()
-    timestamp = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField(default=datetime.now)
 
     class Meta:
         db_table = "weather_alert"

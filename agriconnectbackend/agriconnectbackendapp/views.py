@@ -16,6 +16,9 @@ from django.utils import timezone
 from django.contrib.auth import logout
 from datetime import datetime
 from rest_framework.parsers import MultiPartParser, FormParser
+from django.db.models import Avg
+from django.db.models.functions import TruncHour, TruncDay
+
 
 
 # Create your views here.
@@ -428,6 +431,8 @@ class LogoutView(APIView):
         
 class CropSensorDataView(APIView):
     def get(self, request, crop_id):
+        filter_type = request.query_params.get("filter", "day").lower()
+
         try:
             sensor = Sensor.objects.filter(crop_id=crop_id).first()
             if not sensor:
@@ -436,32 +441,101 @@ class CropSensorDataView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-            data = SensorData.objects.filter(sensor=sensor).order_by('-recorded_at')
+            data = SensorData.objects.filter(sensor=sensor).order_by('recorded_at')
 
-            records = []
-            for record in data:
-                records.append({
-                    "id": record.id,
-                    "temperature": record.temperature,
-                    "rainfall": record.rainfall,
-                    "ph": record.ph,
-                    "light_hours": record.light_hours,
-                    "light_intensity": record.light_intensity,
-                    "rh": record.rh,
-                    "nitrogen": record.nitrogen,
-                    "phosphorus": record.phosphorus,
-                    "potassium": record.potassium,
-                    "yield_value": record.yield_value,
-                    "category_ph": record.category_ph,
-                    "soil_type": record.soil_type,
-                    "season": record.season,
-                    "n_ratio": record.n_ratio,
-                    "p_ratio": record.p_ratio,
-                    "k_ratio": record.k_ratio,
-                    "plant_name": record.plant_name,
-                    "photoperiod": record.photoperiod,
-                    "recorded_at": record.recorded_at,
-                })
+            now = timezone.now()
+            if filter_type == "day":
+                since = now - timedelta(days=1)
+                data = data.filter(recorded_at__gte=since)
+                # Aggregate per hour
+                data = data.annotate(hour=TruncHour('recorded_at')).values('hour').annotate(
+                    temperature=Avg('temperature'),
+                    rainfall=Avg('rainfall'),
+                    ph=Avg('ph'),
+                    light_hours=Avg('light_hours'),
+                    light_intensity=Avg('light_intensity'),
+                    rh=Avg('rh'),
+                    nitrogen=Avg('nitrogen'),
+                    phosphorus=Avg('phosphorus'),
+                    potassium=Avg('potassium'),
+                    yield_value=Avg('yield_value'),
+                    n_ratio=Avg('n_ratio'),
+                    p_ratio=Avg('p_ratio'),
+                    k_ratio=Avg('k_ratio'),
+                ).order_by('hour')
+
+                records = []
+                for row in data:
+                    records.append({
+                        "id": None,
+                        "temperature": row["temperature"] or 0.0,
+                        "rainfall": row["rainfall"] or 0.0,
+                        "ph": row["ph"] or 0.0,
+                        "light_hours": row["light_hours"] or 0.0,
+                        "light_intensity": row["light_intensity"] or 0.0,
+                        "rh": row["rh"] or 0.0,
+                        "nitrogen": row["nitrogen"] or 0.0,
+                        "phosphorus": row["phosphorus"] or 0.0,
+                        "potassium": row["potassium"] or 0.0,
+                        "yield_value": row["yield_value"] or 0.0,
+                        "n_ratio": row["n_ratio"] or 0.0,
+                        "p_ratio": row["p_ratio"] or 0.0,
+                        "k_ratio": row["k_ratio"] or 0.0,
+                        "plant_name": sensor.crop.name,
+                        "recorded_at": row["hour"],
+                        "category_ph": None,
+                        "soil_type": None,
+                        "season": None,
+                        "photoperiod": None,
+                    })
+
+            elif filter_type in ["week", "month"]:
+                days = 7 if filter_type == "week" else 30
+                since = now - timedelta(days=days)
+                data = data.filter(recorded_at__gte=since)
+                # Aggregate per day
+                data = data.annotate(day=TruncDay('recorded_at')).values('day').annotate(
+                    temperature=Avg('temperature'),
+                    rainfall=Avg('rainfall'),
+                    ph=Avg('ph'),
+                    light_hours=Avg('light_hours'),
+                    light_intensity=Avg('light_intensity'),
+                    rh=Avg('rh'),
+                    nitrogen=Avg('nitrogen'),
+                    phosphorus=Avg('phosphorus'),
+                    potassium=Avg('potassium'),
+                    yield_value=Avg('yield_value'),
+                    n_ratio=Avg('n_ratio'),
+                    p_ratio=Avg('p_ratio'),
+                    k_ratio=Avg('k_ratio'),
+                ).order_by('day')
+
+                records = []
+                for row in data:
+                    records.append({
+                        "id": None,
+                        "temperature": row["temperature"] or 0.0,
+                        "rainfall": row["rainfall"] or 0.0,
+                        "ph": row["ph"] or 0.0,
+                        "light_hours": row["light_hours"] or 0.0,
+                        "light_intensity": row["light_intensity"] or 0.0,
+                        "rh": row["rh"] or 0.0,
+                        "nitrogen": row["nitrogen"] or 0.0,
+                        "phosphorus": row["phosphorus"] or 0.0,
+                        "potassium": row["potassium"] or 0.0,
+                        "yield_value": row["yield_value"] or 0.0,
+                        "n_ratio": row["n_ratio"] or 0.0,
+                        "p_ratio": row["p_ratio"] or 0.0,
+                        "k_ratio": row["k_ratio"] or 0.0,
+                        "plant_name": sensor.crop.name,
+                        "recorded_at": row["day"],
+                        "category_ph": None,
+                        "soil_type": None,
+                        "season": None,
+                        "photoperiod": None,
+                    })
+            else:
+                records = []
 
             return Response(
                 {"success": True, "sensor_id": sensor.id, "records": records},
@@ -473,7 +547,7 @@ class CropSensorDataView(APIView):
                 {"success": False, "message": f"Error: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
+        
 class FeedbackView(APIView):
     def post(self, request):
         try:
