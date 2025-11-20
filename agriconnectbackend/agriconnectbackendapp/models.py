@@ -72,7 +72,7 @@ class UserFeedback(models.Model):
     rating = models.PositiveSmallIntegerField(blank=True, null=True)
     created_at = models.DateTimeField(default=datetime.now)
     class Meta:
-        db_table = "Feedback"
+        db_table = "feedback"
         ordering = ['-created_at']
 
 class Notification(models.Model):

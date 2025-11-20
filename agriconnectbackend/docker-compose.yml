@@ -38,6 +38,8 @@ services:
       - db
     volumes:
       - .:/app
+    ports:
+      - "8001:8000"
     environment:
       - DB_HOST=db
       - DB_NAME=agriconnect_db
@@ -52,6 +54,8 @@ services:
       - db
     volumes:
       - .:/app
+    ports:
+      - "8002:8000"
     environment:
       - DB_HOST=db
       - DB_NAME=agriconnect_db
