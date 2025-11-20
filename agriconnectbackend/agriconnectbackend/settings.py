@@ -79,10 +79,10 @@ WSGI_APPLICATION = 'agriconnectbackend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'agriconnect_db',
-        'USER': 'thabang',
-        'PASSWORD': '12345',
-        'HOST': 'localhost',
+        'NAME': os.getenv('DB_NAME', 'agriconnect_db'),
+        'USER': os.getenv('DB_USER', 'thabang'),
+        'PASSWORD': os.getenv('DB_PASSWORD', '12345'),
+        'HOST': os.getenv('DB_HOST', 'db'),
         'PORT': '3306',
     },
     'timeseries': {
@@ -128,7 +128,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Africa/Johannesburg'
 
 USE_I18N = True
 

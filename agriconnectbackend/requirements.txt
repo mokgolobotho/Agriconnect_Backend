@@ -1,0 +1,14 @@
+Django==5.1.4
+mysqlclient==2.2.7
+requests==2.32.4
+djangorestframework==3.15.2
+firebase-admin==7.1.0
+PyMySQL==1.1.2
+joblib==1.5.2
+numpy==2.1.2
+pandas==2.2.3
+scikit-learn==1.7.2
+scipy==1.16.2
+python-dotenv==1.1.1
+Pillow>=11.0.0
+
